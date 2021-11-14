@@ -1,7 +1,5 @@
 extern crate ytd_rs;
 extern crate regex;
-extern crate reqwest;
-extern crate image;
 use ytd_rs::{YoutubeDL, ResultType, Arg};
 use std::path::PathBuf;
 use std::io::Write;
@@ -11,6 +9,7 @@ use regex::Regex;
 #[derive(Debug)]
 struct FileData
 {
+    url: Option<String>,            // URL is required
     title: Option<String>,          // Title is required
     file_name: Option<String>,      // File name is required
     extension: Option<String>,      // Extension is optional
@@ -24,10 +23,8 @@ struct FileData
 #[derive(Debug)]
 enum FailReason
 {
-    StdInFailed,
-    InvalidImage,
-    NetworkFailure,
-    FailedToSave
+    NoURLProvided,
+    StdInFailed
 }
 
 fn main() 
@@ -35,30 +32,60 @@ fn main()
     // Create the file data that we'll work with throughout
     let mut song: FileData = FileData
     {
-       title: None,
-       file_name: None,
-       extension: None,
-       artist: None,
-       album: None,
-       cover: None,
-       output_path: None
+        url: None,
+        title: None,
+        file_name: None,
+        extension: None,
+        artist: None,
+        album: None,
+        cover: None,
+        output_path: None
     };
     
-    println!("Current song struct is\n{:?}", &song);
-
     // Pass the song to the argument parsing function
     if let Err(e) = parse_flags(&mut song)
     {
         println!("{:?}", e);
     }
 
-    println!("song is now\n{:?}", &song);
+    println!("{:?}", &song);
 }
 
+
+//
+// Parse the user's cli flags to get all the needed info
+//
 fn parse_flags(file_data: &mut FileData) -> Result<(), FailReason>
 {
     // First, get all the user's arguments as a vector
     let args: Vec<String> = std::env::args().skip(1).collect();
+
+    // Get the URL, 
+    if let Some(given_url) = args.last() { file_data.url = Some(String::from(given_url)); } else { return Err(FailReason::NoURLProvided); }
+
+    //
+    // Parse the cover, make sure the url is valid
+    //
+    
+    // Get the position of the cover flag, assign it
+    let cover_index_opt = args.iter().position(|i| i.as_str() == "-cover" || i.as_str() == "-c");
+    if let Some(flag_index) = cover_index_opt
+    {
+        if let Some(requested_cover) = args.get(flag_index + 1)
+        {
+            file_data.cover = Some(String::from(requested_cover));
+        }
+    }
+    if file_data.cover == None
+    {
+        // Get the youtube thumbnail
+        let extraction_url = file_data.url.clone().unwrap();
+        let dl_res = YoutubeDL::new(&PathBuf::from("./"), vec![Arg::new("--quiet"), Arg::new("--get-thumbnail")], extraction_url.as_str()).unwrap().download();
+        let mut cover_url = String::from(dl_res.output());
+        cover_url.pop();
+        file_data.cover = Some(cover_url);
+    }
+
 
     //
     // Parse the title
@@ -110,18 +137,9 @@ fn parse_flags(file_data: &mut FileData) -> Result<(), FailReason>
     // If file_data.title is None, there was either no title flag or the user didn't enter a title
     if file_data.file_name == None
     {
-        // Prompt the user to enter a title
-        println!("You didn't enter a file name. Please do so now:");
-        print!(">>>");
-        std::io::stdout().flush().unwrap();
-        let mut entered_filename = String::new();
-        if let Ok(_) = std::io::stdin().read_line(&mut entered_filename)
-        {
-            entered_filename.pop();
-            let formatted_filename = unallowed_chars.replace_all(entered_filename.as_str(), "");
-            if entered_filename.as_str() != formatted_filename { println!("Invalid file name - using \"{}\"", formatted_filename); }
-            file_data.file_name = Some(formatted_filename.to_string());
-        } else { return Err(FailReason::StdInFailed); }
+        let copied_title = file_data.title.clone().unwrap();
+        let formatted_filename = unallowed_chars.replace_all(copied_title.as_str(), "");
+        file_data.file_name = Some(formatted_filename.to_string());
     }
 
 
@@ -253,41 +271,6 @@ fn parse_flags(file_data: &mut FileData) -> Result<(), FailReason>
     }
 
 
-    //
-    // Parse the cover
-    //
-    
-    // Get the position of the cover flag, assign it
-    let mut cover_url = String::new();
-    let cover_index_opt = args.iter().position(|i| i.as_str() == "-cover" || i.as_str() == "-c");
-    if let Some(flag_index) = cover_index_opt
-    {
-        if let Some(requested_cover) = args.get(flag_index + 1)
-        {
-            cover_url = String::from(requested_cover);
-        }
-    }
-    if cover_url == ""
-    {
-        // Prompt the user to enter a title
-        println!("You didn't enter the URL for a cover. Please do so now:");
-        print!(">>>");
-        std::io::stdout().flush().unwrap();
-        let mut entered_cover = String::new();
-        if let Ok(_) = std::io::stdin().read_line(&mut entered_cover)
-        {
-            entered_cover.pop();
-            cover_url = String::from(entered_cover);
-        } else { return Err(FailReason::StdInFailed); }
-    }
-    
-    // Now we have the url, get the image bytes
-    let img_bytes = if let Ok(bytes) = reqwest::blocking::get(cover_url.as_str()) { if let Ok(unwrapped_bytes) = bytes.bytes() { unwrapped_bytes } else { return Err(FailReason::NetworkFailure) } } else { return Err(FailReason::NetworkFailure) };
-    
-    // Turn the bytes into an image and save it
-    let cover_image_res = image::load_from_memory(&img_bytes);
-    let cover_image = if let Ok(img) = cover_image_res { img } else { return Err(FailReason::InvalidImage) };
-    if let Ok(_) = cover_image.save_with_format("./___cover.png", image::ImageFormat::Png) { file_data.cover = Some(String::from("./___cover.png")); } else { return Err(FailReason::FailedToSave) }
 
     Ok(())
 }
