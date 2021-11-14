@@ -1,21 +1,53 @@
 use ytd_rs::{YoutubeDL, ResultType, Arg};
 use std::path::PathBuf;
 
-fn main() {
-    // Set some testing details
-    let test_url = "https://www.youtube.com/watch?v=TIgcVT4SfGw";
-    let output_path = PathBuf::from("./");
+// A struct that will hold all the data about the song
+#[derive(Debug)]
+struct FileData
+{
+    title: Option<String>,
+    file_name: Option<String>,
+    extension: Option<String>,
+    artist: Option<String>,
+    album: Option<String>,
+    cover: Option<String>,
+    output_path: Option<PathBuf>,
+}
 
-    // Define the args
-    let arg_list = vec![Arg::new_with_arg("-f", "bestaudio"), Arg::new_with_arg("--postprocessor-args", "-metadata artist='Mori Calliope'")];
+// An enum that will hold all the reasons anything could fail
+#[derive(Debug)]
+enum FailReason
+{
+    FieldNotProvided(String)
+}
 
-    // Do the actual download
-    let downloader = YoutubeDL::new(&output_path, arg_list, test_url).unwrap();
-    let dl_res = downloader.download();
-
-    // Make sure it's not an error
-    match dl_res.result_type() {
-        ResultType::SUCCESS => println!("Downloaded :)"),
-        _ => println!("Failed to download: {:?}", dl_res.output())
+fn main() 
+{
+    // Create the file data that we'll work with throughout
+    let mut song: FileData = FileData
+    {
+       title: None,
+       file_name: None,
+       extension: None,
+       artist: None,
+       album: None,
+       cover: None,
+       output_path: None
     };
+    
+    println!("Current song struct is\n{:?}", &song);
+
+    // Pass the song to the argument parsing function
+    if let Err(e) = parse_flags(&mut song)
+    {
+        println!("{:?}", e);
+    }
+
+    println!("song is now\n{:?}", &song);
+}
+
+fn parse_flags(file_data: &mut FileData) -> Result<(), FailReason>
+{
+    file_data.title = Some(String::from("Title will go here!"));
+    Ok(())
 }
