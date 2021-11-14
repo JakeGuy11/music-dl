@@ -12,7 +12,7 @@ struct FileData
     title: Option<String>,          // Title is required
     file_name: Option<String>,      // File name is required
     extension: Option<String>,      // Extension is optional
-    artist: Option<String>,         // Artist is optional
+    artist: Option<String>,         // Artist is required
     album: Option<String>,          // Album is optional
     cover: Option<String>,          // Cover is optional
     output_path: Option<PathBuf>,   // Output path is optional
@@ -136,6 +136,36 @@ fn parse_flags(file_data: &mut FileData) -> Result<(), FailReason>
 
     // If file_data.title is None, there was either no title flag or the user didn't enter a title
     if file_data.extension == None { file_data.extension = Some(String::from("mp3")) }
+
+
+    //
+    // Parse the artist
+    //
+    
+    // Get the position of the artist flag, assign it
+    let artist_index_opt = args.iter().position(|i| i.as_str() == "-artist" || i.as_str() == "-a");
+    if let Some(flag_index) = artist_index_opt
+    {
+        if let Some(requested_artist) = args.get(flag_index + 1)
+        {
+            file_data.artist = Some(String::from(requested_artist));
+        }
+    }
+
+    // If file_data.title is None, there was either no title flag or the user didn't enter a title
+    if file_data.artist == None
+    {
+        // Prompt the user to enter a title
+        println!("You didn't enter an artist. Please do so now:");
+        print!(">>>");
+        std::io::stdout().flush().unwrap();
+        let mut entered_artist = String::new();
+        if let Ok(_) = std::io::stdin().read_line(&mut entered_artist)
+        {
+            entered_artist.pop();
+            file_data.artist = Some(entered_artist);
+        } else { return Err(FailReason::StdInFailed); }
+    }
 
     Ok(())
 }
