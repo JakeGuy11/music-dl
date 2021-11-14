@@ -167,6 +167,31 @@ fn parse_flags(file_data: &mut FileData) -> Result<(), FailReason>
         } else { return Err(FailReason::StdInFailed); }
     }
 
+
+    //
+    // Parse the artist
+    //
+    
+    // If the user forces no album tag, ignore this whole part and leave it as None
+    if !args.iter().any(|i| i.as_str() == "-no-album" || i.as_str() == "-nb")
+    {
+        // Get the index of the album tag
+        let album_index_opt = args.iter().position(|i| i.as_str() == "-album" || i.as_str() == "-b");
+        if let Some(flag_index) = album_index_opt
+        {
+            if let Some(requested_album) = args.get(flag_index + 1)
+            {
+                file_data.album = Some(String::from(requested_album));
+            }
+        }
+
+        // If file_data.title is None, there was either no title flag or the user didn't enter a title
+        if file_data.album == None
+        {
+            file_data.album = file_data.title.clone();
+        }
+    }
+
     Ok(())
 }
 
