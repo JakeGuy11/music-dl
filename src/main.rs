@@ -1,5 +1,7 @@
 extern crate ytd_rs;
 extern crate regex;
+extern crate reqwest;
+extern crate image;
 use ytd_rs::{YoutubeDL, ResultType, Arg};
 use std::path::PathBuf;
 use std::io::Write;
@@ -253,13 +255,13 @@ fn parse_flags(file_data: &mut FileData) -> Result<(), FailReason>
     //
     
     // Get the position of the cover flag, assign it
-    let mut cover_url = "";
+    let mut cover_url = String::new();
     let cover_index_opt = args.iter().position(|i| i.as_str() == "-cover" || i.as_str() == "-c");
     if let Some(flag_index) = cover_index_opt
     {
         if let Some(requested_cover) = args.get(flag_index + 1)
         {
-            cover_url = requested_cover.as_str();
+            cover_url = String::from(requested_cover);
         }
     }
     if cover_url == ""
@@ -272,11 +274,16 @@ fn parse_flags(file_data: &mut FileData) -> Result<(), FailReason>
         if let Ok(_) = std::io::stdin().read_line(&mut entered_cover)
         {
             entered_cover.pop();
-            cover_url = entered_cover.as_str();
+            cover_url = String::from(entered_cover);
         } else { return Err(FailReason::StdInFailed); }
     }
-
     
+    // Now we have the url, get the image bytes
+    let img_bytes = reqwest::blocking::get(cover_url.as_str()).unwrap().bytes().unwrap();
+    
+    // Turn the bytes into an image and save it
+    let cover_image = image::load_from_memory(&img_bytes).unwrap();
+    let save_res = cover_image.save_with_format("./out.png", image::ImageFormat::Png);
 
     Ok(())
 }
