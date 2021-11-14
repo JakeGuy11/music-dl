@@ -24,7 +24,7 @@ struct FileData
 enum FailReason
 {
     NoURLProvided,
-    StdInFailed
+    StdInFailed,
 }
 
 fn main() 
@@ -42,12 +42,17 @@ fn main()
         output_path: None
     };
     
+    // Parse all the user's cli flags, ask for any we still need
     match parse_flags(&mut song)
     {
         Err(FailReason::NoURLProvided) => { eprintln!("You must provide a URL to download!"); std::process::exit(1); },
         Err(FailReason::StdInFailed) => { eprintln!("Failed to read console input!"); std::process::exit(1); },
         Ok(_) => { println!("Downloading..."); }
     }
+
+    // Generate the ffmpeg download command
+    let command = generate_ffmpeg_flags(&song);
+    println!("{}", command);
 
 }
 
@@ -270,8 +275,46 @@ fn parse_flags(file_data: &mut FileData) -> Result<(), FailReason>
         }
     }
 
-
-
     Ok(())
+}
+
+fn generate_ffmpeg_flags(file_data: &FileData) -> String
+{
+    let mut command: Vec<String> = Vec::new();
+
+    // This is the format of the ffmpeg command:
+    // ffmpeg -i youtube_song_url -i youtube_cover_url -map 0:0 -map 1:0 -q:a 0 -y -id3v2_version 3
+    //      -metadata title="my_title" -metadata album="album_name" -metadata artist="artist_name"
+    //      -metadata date="year" -metadata track="track#" -metadata:s:v comment="Cover
+    //      (front)" output_file.mp3
+    // And I'm just now realizing that I need to add options for the year and track :'(
+
+    // First, add all the mandatory stuff
+    command.push(String::from("ffmpeg"));
+    command.push(String::from("-i"));
+    command.push(String::from(file_data.url.as_ref().unwrap()));
+    command.push(String::from("-i"));
+    command.push(String::from(file_data.cover.as_ref().unwrap()));
+    command.push(String::from("-map 0:0 -map 1:0"));
+    command.push(String::from("-q:a 0 -y"));
+    command.push(String::from("-id3v2_version 3"));
+
+    // Now add the metadata
+    // Add the title
+    command.push(format!("-metadata title='{}'", file_data.title.as_ref().unwrap()));
+    // Add the artist
+    command.push(format!("-metadata artist='{}'", file_data.artist.as_ref().unwrap()));
+    // Add the album if it's not none
+    if let Some(album) = file_data.album.as_ref() { command.push(format!("-metadata album='{}'", album)); }
+    // Add the year (implement later)
+    // Add the track number (implement later)
+    // Add the cover details
+    command.push(format!("-metadata:s:v comment='Cover (front)'"));
+
+    // Finally, add the output file
+    command.push(format!("{:?}/{}.{}", file_data.output_path.as_ref().unwrap(), file_data.file_name.as_ref().unwrap(), file_data.extension.as_ref().unwrap()));
+
+    // Concat all the commands and return it
+    command.join(" ")
 }
 
