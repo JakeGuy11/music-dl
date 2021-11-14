@@ -1,6 +1,9 @@
+extern crate ytd_rs;
+extern crate regex;
 use ytd_rs::{YoutubeDL, ResultType, Arg};
 use std::path::PathBuf;
 use std::io::Write;
+use regex::Regex;
 
 // A struct that will hold all the data about the song
 #[derive(Debug)]
@@ -78,6 +81,41 @@ fn parse_flags(file_data: &mut FileData) -> Result<(), FailReason>
         {
             entered_title.pop();
             file_data.title = Some(entered_title);
+        } else { return Err(FailReason::StdInFailed); }
+    }
+
+
+    //
+    // Parse the file name
+    //
+    
+    // Get the position of the title flag, assign it
+    let filename_index_opt = args.iter().position(|i| i.as_str() == "-filename" || i.as_str() == "-n");
+    let unallowed_chars = Regex::new(r#"[!@#$%^&*\\\n\t\r"'/?<>:]"#).unwrap();
+    if let Some(flag_index) = filename_index_opt
+    {
+        if let Some(requested_filename) = args.get(flag_index + 1)
+        {
+            let formatted_filename = unallowed_chars.replace_all(requested_filename, "");
+            if requested_filename.as_str() != formatted_filename { println!("Invalid file name - using \"{}\"", formatted_filename); }
+            file_data.file_name = Some(formatted_filename.to_string());
+        }
+    }
+
+    // If file_data.title is None, there was either no title flag or the user didn't enter a title
+    if file_data.file_name == None
+    {
+        // Prompt the user to enter a title
+        println!("You didn't enter a file name. Please do so now:");
+        print!(">>>");
+        std::io::stdout().flush().unwrap();
+        let mut entered_filename = String::new();
+        if let Ok(_) = std::io::stdin().read_line(&mut entered_filename)
+        {
+            entered_filename.pop();
+            let formatted_filename = unallowed_chars.replace_all(entered_filename.as_str(), "");
+            if entered_filename.as_str() != formatted_filename { println!("Invalid file name - using \"{}\"", formatted_filename); }
+            file_data.file_name = Some(formatted_filename.to_string());
         } else { return Err(FailReason::StdInFailed); }
     }
 
