@@ -52,6 +52,8 @@ fn main()
         Ok(_) => { println!("Downloading..."); }
     }
 
+    println!("cover url is {}", song.cover.as_ref().unwrap());
+
     // Generate the ffmpeg download command
     let command = generate_ffmpeg_flags(&song);
     println!("{}", command);
@@ -93,8 +95,8 @@ fn parse_flags(file_data: &mut FileData) -> Result<(), FailReason>
     if file_data.cover == None
     {
         // Get the youtube thumbnail
-        let extraction_url = file_data.url.clone().unwrap();
-        let dl_res = YoutubeDL::new(&PathBuf::from("./"), vec![Arg::new("--quiet"), Arg::new("--get-thumbnail")], extraction_url.as_str()).unwrap().download();
+        let extraction_url = raw_url;
+        let dl_res = YoutubeDL::new(&PathBuf::from("./"), vec![Arg::new("--get-thumbnail")], extraction_url.as_str()).unwrap().download();
         let mut cover_url = String::from(dl_res.output());
         cover_url.pop();
         file_data.cover = Some(cover_url);
@@ -301,27 +303,27 @@ fn generate_ffmpeg_flags(file_data: &FileData) -> String
     // First, add all the mandatory stuff
     command.push(String::from("ffmpeg"));
     command.push(String::from("-i"));
-    command.push(String::from(file_data.url.as_ref().unwrap()));
+    command.push(String::from(format!("\"{}\"", file_data.url.as_ref().unwrap())));
     command.push(String::from("-i"));
-    command.push(String::from(file_data.cover.as_ref().unwrap()));
+    command.push(String::from(format!("\"{}\"", file_data.cover.as_ref().unwrap())));
     command.push(String::from("-map 0:0 -map 1:0"));
     command.push(String::from("-q:a 0 -y"));
     command.push(String::from("-id3v2_version 3"));
 
     // Now add the metadata
     // Add the title
-    command.push(format!("-metadata title='{}'", file_data.title.as_ref().unwrap()));
+    command.push(format!("-metadata title=\"{}\"", file_data.title.as_ref().unwrap()));
     // Add the artist
-    command.push(format!("-metadata artist='{}'", file_data.artist.as_ref().unwrap()));
+    command.push(format!("-metadata artist=\"{}\"", file_data.artist.as_ref().unwrap()));
     // Add the album if it's not none
-    if let Some(album) = file_data.album.as_ref() { command.push(format!("-metadata album='{}'", album)); }
+    if let Some(album) = file_data.album.as_ref() { command.push(format!("-metadata album=\"{}\"", album)); }
     // Add the year (implement later)
     // Add the track number (implement later)
     // Add the cover details
-    command.push(format!("-metadata:s:v comment='Cover (front)'"));
+    command.push(format!("-metadata:s:v comment=\"Cover (front)\""));
 
     // Finally, add the output file
-    command.push(format!("{:?}/{}.{}", file_data.output_path.as_ref().unwrap(), file_data.file_name.as_ref().unwrap(), file_data.extension.as_ref().unwrap()));
+    command.push(format!("\"{}/{}.{}\"", file_data.output_path.as_ref().unwrap().to_str().unwrap(), file_data.file_name.as_ref().unwrap(), file_data.extension.as_ref().unwrap()));
 
     // Concat all the commands and return it
     command.join(" ")
