@@ -121,6 +121,40 @@ fn parse_flags(file_data: &mut FileData) -> Result<(), FailReason>
 
 
     //
+    // Parse the file name
+    //
+    
+    // Get the position of the title flag, assign it
+    let filename_index_opt = args.iter().position(|i| i.as_str() == "-filename" || i.as_str() == "-n");
+    let unallowed_chars = Regex::new(r#"[!@#$%^&*\\\n\t\r"'/?<>:]"#).unwrap();
+    if let Some(flag_index) = filename_index_opt
+    {
+        if let Some(requested_filename) = args.get(flag_index + 1)
+        {
+            let formatted_filename = unallowed_chars.replace_all(requested_filename, "");
+            if requested_filename.as_str() != formatted_filename { println!("Invalid file name - using \"{}\"", formatted_filename); }
+            file_data.file_name = Some(formatted_filename.to_string());
+        }
+    }
+
+    // If file_data.title is None, there was either no title flag or the user didn't enter a title
+    if file_data.file_name == None
+    {
+        // Prompt the user to enter a title
+        println!("You didn't enter a file name. Please do so now:");
+        print!(">>>");
+        std::io::stdout().flush().unwrap();
+        let mut entered_filename = String::new();
+        if let Ok(_) = std::io::stdin().read_line(&mut entered_filename)
+        {
+            entered_filename.pop();
+            let formatted_filename = unallowed_chars.replace_all(entered_filename.as_str(), "");
+            if entered_filename.as_str() != formatted_filename { println!("Invalid file name - using \"{}\"", formatted_filename); }
+            file_data.file_name = Some(formatted_filename.to_string());
+        } else { return Err(FailReason::StdInFailed); }
+    }
+
+    //
     // Parse the extension
     //
     
@@ -136,6 +170,27 @@ fn parse_flags(file_data: &mut FileData) -> Result<(), FailReason>
 
     // If file_data.title is None, there was either no title flag or the user didn't enter a title
     if file_data.extension == None { file_data.extension = Some(String::from("mp3")) }
+
+
+    //
+    // Parse the path
+    //
+    
+    // Get the position of the path flag, assign it
+    let path_index_opt = args.iter().position(|i| i.as_str() == "-path" || i.as_str() == "-p");
+    if let Some(flag_index) = path_index_opt
+    {
+        if let Some(requested_path) = args.get(flag_index + 1)
+        {
+            file_data.output_path = Some(PathBuf::from(requested_path));
+        }
+    }
+
+    // If file_data.output_path is None, set it to the default (./)
+    if file_data.output_path == None
+    {
+        file_data.output_path = Some(PathBuf::from("./"));
+    }
 
 
     //
@@ -169,7 +224,7 @@ fn parse_flags(file_data: &mut FileData) -> Result<(), FailReason>
 
 
     //
-    // Parse the artist
+    // Parse the album
     //
     
     // If the user forces no album tag, ignore this whole part and leave it as None
@@ -191,6 +246,37 @@ fn parse_flags(file_data: &mut FileData) -> Result<(), FailReason>
             file_data.album = file_data.title.clone();
         }
     }
+
+
+    //
+    // Parse the cover
+    //
+    
+    // Get the position of the cover flag, assign it
+    let mut cover_url = "";
+    let cover_index_opt = args.iter().position(|i| i.as_str() == "-cover" || i.as_str() == "-c");
+    if let Some(flag_index) = cover_index_opt
+    {
+        if let Some(requested_cover) = args.get(flag_index + 1)
+        {
+            cover_url = requested_cover.as_str();
+        }
+    }
+    if cover_url == ""
+    {
+        // Prompt the user to enter a title
+        println!("You didn't enter the URL for a cover. Please do so now:");
+        print!(">>>");
+        std::io::stdout().flush().unwrap();
+        let mut entered_cover = String::new();
+        if let Ok(_) = std::io::stdin().read_line(&mut entered_cover)
+        {
+            entered_cover.pop();
+            cover_url = entered_cover.as_str();
+        } else { return Err(FailReason::StdInFailed); }
+    }
+
+    
 
     Ok(())
 }
