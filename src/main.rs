@@ -24,7 +24,10 @@ struct FileData
 #[derive(Debug)]
 enum FailReason
 {
-    StdInFailed
+    StdInFailed,
+    InvalidImage,
+    NetworkFailure,
+    FailedToSave
 }
 
 fn main() 
@@ -279,11 +282,12 @@ fn parse_flags(file_data: &mut FileData) -> Result<(), FailReason>
     }
     
     // Now we have the url, get the image bytes
-    let img_bytes = reqwest::blocking::get(cover_url.as_str()).unwrap().bytes().unwrap();
+    let img_bytes = if let Ok(bytes) = reqwest::blocking::get(cover_url.as_str()) { if let Ok(unwrapped_bytes) = bytes.bytes() { unwrapped_bytes } else { return Err(FailReason::NetworkFailure) } } else { return Err(FailReason::NetworkFailure) };
     
     // Turn the bytes into an image and save it
-    let cover_image = image::load_from_memory(&img_bytes).unwrap();
-    let save_res = cover_image.save_with_format("./out.png", image::ImageFormat::Png);
+    let cover_image_res = image::load_from_memory(&img_bytes);
+    let cover_image = if let Ok(img) = cover_image_res { img } else { return Err(FailReason::InvalidImage) };
+    if let Ok(_) = cover_image.save_with_format("./___cover.png", image::ImageFormat::Png) { file_data.cover = Some(String::from("./___cover.png")); } else { return Err(FailReason::FailedToSave) }
 
     Ok(())
 }
