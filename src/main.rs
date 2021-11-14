@@ -25,6 +25,7 @@ enum FailReason
 {
     NoURLProvided,
     StdInFailed,
+    YoutubeDLFailed
 }
 
 fn main() 
@@ -47,6 +48,7 @@ fn main()
     {
         Err(FailReason::NoURLProvided) => { eprintln!("You must provide a URL to download!"); std::process::exit(1); },
         Err(FailReason::StdInFailed) => { eprintln!("Failed to read console input!"); std::process::exit(1); },
+        Err(FailReason::YoutubeDLFailed) => { eprintln!("Failed to run youtube-dl command!"); std::process::exit(1); },
         Ok(_) => { println!("Downloading..."); }
     }
 
@@ -65,8 +67,15 @@ fn parse_flags(file_data: &mut FileData) -> Result<(), FailReason>
     // First, get all the user's arguments as a vector
     let args: Vec<String> = std::env::args().skip(1).collect();
 
-    // Get the URL, 
-    if let Some(given_url) = args.last() { file_data.url = Some(String::from(given_url)); } else { return Err(FailReason::NoURLProvided); }
+    // Get the URL
+    let raw_url = if let Some(given_url) = args.last() { String::from(given_url) } else { return Err(FailReason::NoURLProvided); };
+    // Turn that raw url into the raw video url
+    let downloader = YoutubeDL::new(&PathBuf::from("./"), vec![Arg::new_with_arg("-f", "bestaudio"), Arg::new("-g")], raw_url.as_str()).unwrap().download();
+    file_data.url = match downloader.result_type()
+    {
+        ResultType::SUCCESS => { Some(downloader.output().to_string()) },
+        _ => { eprintln!("{}", downloader.output()); return Err(FailReason::YoutubeDLFailed); }
+    };
 
     //
     // Parse the cover, make sure the url is valid
