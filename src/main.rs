@@ -42,13 +42,13 @@ fn main()
         output_path: None
     };
     
-    // Pass the song to the argument parsing function
-    if let Err(e) = parse_flags(&mut song)
+    match parse_flags(&mut song)
     {
-        println!("{:?}", e);
+        Err(FailReason::NoURLProvided) => { eprintln!("You must provide a URL to download!"); std::process::exit(1); },
+        Err(FailReason::StdInFailed) => { eprintln!("Failed to read console input!"); std::process::exit(1); },
+        Ok(_) => { println!("Downloading..."); }
     }
 
-    println!("{:?}", &song);
 }
 
 
