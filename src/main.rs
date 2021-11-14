@@ -15,6 +15,8 @@ struct FileData
     extension: Option<String>,      // Extension is optional
     artist: Option<String>,         // Artist is required
     album: Option<String>,          // Album is optional
+    year: Option<String>,           // Year is optional
+    track: Option<String>,          // Track is optional
     cover: Option<String>,          // Cover is optional
     output_path: Option<PathBuf>,   // Output path is optional
 }
@@ -39,6 +41,8 @@ fn main()
         extension: None,
         artist: None,
         album: None,
+        year: None,
+        track: None,
         cover: None,
         output_path: None
     };
@@ -283,6 +287,58 @@ fn parse_flags(file_data: &mut FileData) -> Result<(), FailReason>
         if file_data.album == None
         {
             file_data.album = file_data.title.clone();
+        }
+    }
+
+
+    //
+    // Parse the year
+    //
+    
+    // Get the index of the year tag
+    if !args.iter().any(|i| i.as_str() == "-no-year" || i.as_str() == "-ny")
+    {
+        let year_index_opt = args.iter().position(|i| i.as_str() == "-year" || i.as_str() == "-y");
+        if let Some(flag_index) = year_index_opt
+        {
+            if let Some(requested_year) = args.get(flag_index + 1)
+            {
+                file_data.year = Some(String::from(requested_year));
+            }
+        }
+        if file_data.year == None
+        {
+            // Prompt the user to enter a year
+            println!("You didn't enter a year. Please do so now:");
+            print!(">>>");
+            std::io::stdout().flush().unwrap();
+            let mut entered_year = String::new();
+            if let Ok(_) = std::io::stdin().read_line(&mut entered_year)
+            {
+                entered_year.pop();
+                if entered_year != String::from("") { file_data.year = Some(entered_year); }
+            } else { return Err(FailReason::StdInFailed); }
+        }
+    }
+
+    //
+    // Parse the track number
+    //
+    
+    // Get the index of the track tag
+    if !args.iter().any(|i| i.as_str() == "-no-track" || i.as_str() == "-nt")
+    {
+        let track_index_opt = args.iter().position(|i| i.as_str() == "-track" || i.as_str() == "-t");
+        if let Some(flag_index) = track_index_opt
+        {
+            if let Some(requested_track) = args.get(flag_index + 1)
+            {
+                file_data.track = Some(String::from(requested_track));
+            }
+        }
+        if file_data.album == None
+        {
+            file_data.track = Some(String::from("1"));
         }
     }
 
