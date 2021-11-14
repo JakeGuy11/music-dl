@@ -328,7 +328,7 @@ fn parse_flags(file_data: &mut FileData) -> Result<(), FailReason>
     // Get the index of the track tag
     if !args.iter().any(|i| i.as_str() == "-no-track" || i.as_str() == "-nt")
     {
-        let track_index_opt = args.iter().position(|i| i.as_str() == "-track" || i.as_str() == "-t");
+        let track_index_opt = args.iter().position(|i| i.as_str() == "-track" || i.as_str() == "-r");
         if let Some(flag_index) = track_index_opt
         {
             if let Some(requested_track) = args.get(flag_index + 1)
@@ -336,7 +336,7 @@ fn parse_flags(file_data: &mut FileData) -> Result<(), FailReason>
                 file_data.track = Some(String::from(requested_track));
             }
         }
-        if file_data.album == None
+        if file_data.track == None
         {
             file_data.track = Some(String::from("1"));
         }
@@ -374,7 +374,9 @@ fn generate_ffmpeg_flags(file_data: &FileData) -> String
     // Add the album if it's not none
     if let Some(album) = file_data.album.as_ref() { command.push(format!("-metadata album=\"{}\"", album)); }
     // Add the year (implement later)
+    if let Some(year) = file_data.year.as_ref() { command.push(format!("-metadata date=\"{}\"", year)); }
     // Add the track number (implement later)
+    if let Some(track) = file_data.track.as_ref() { command.push(format!("-metadata track=\"{}\"", track)); }
     // Add the cover details
     command.push(format!("-metadata:s:v comment=\"Cover (front)\""));
 
