@@ -11,7 +11,7 @@ struct FileData
 {
     title: Option<String>,          // Title is required
     file_name: Option<String>,      // File name is required
-    extension: Option<String>,      // Extension is required
+    extension: Option<String>,      // Extension is optional
     artist: Option<String>,         // Artist is optional
     album: Option<String>,          // Album is optional
     cover: Option<String>,          // Cover is optional
@@ -118,6 +118,24 @@ fn parse_flags(file_data: &mut FileData) -> Result<(), FailReason>
             file_data.file_name = Some(formatted_filename.to_string());
         } else { return Err(FailReason::StdInFailed); }
     }
+
+
+    //
+    // Parse the extension
+    //
+    
+    // Get the position of the extension flag, assign it
+    let ext_index_opt = args.iter().position(|i| i.as_str() == "-extension" || i.as_str() == "-e");
+    if let Some(flag_index) = ext_index_opt
+    {
+        if let Some(requested_ext) = args.get(flag_index + 1)
+        {
+            file_data.extension = Some(String::from(requested_ext));
+        }
+    }
+
+    // If file_data.title is None, there was either no title flag or the user didn't enter a title
+    if file_data.extension == None { file_data.extension = Some(String::from("mp3")) }
 
     Ok(())
 }
