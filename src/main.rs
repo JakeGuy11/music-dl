@@ -88,15 +88,39 @@ fn parse_flags(file_data: &mut FileData) -> Result<(), FailReason>
         std::process::exit(0);
     }
 
-    // Get the URL
-    let raw_url = if let Some(given_url) = args.last() { String::from(given_url) } else { return Err(FailReason::NoURLProvided); };
-    // Turn that raw url into the raw video url
-    let downloader = YoutubeDL::new(&PathBuf::from("./"), vec![Arg::new_with_arg("-f", "bestaudio"), Arg::new("-g")], raw_url.as_str()).unwrap().download();
-    file_data.url = match downloader.result_type()
+    // Check to make sure the user didn't pass their own url
+    let cover_ext_url_opt = if !args.iter().any(|i| i.as_str() == "-stream" || i.as_str() == "-s")
     {
-        ResultType::SUCCESS => { Some(downloader.output().to_string()) },
-        _ => { eprintln!("{}", downloader.output()); return Err(FailReason::YoutubeDLFailed); }
+        // Get the URL
+        let raw_url = if let Some(given_url) = args.last() { String::from(given_url) } else { return Err(FailReason::NoURLProvided); };
+        // Turn that raw url into the raw video url
+        let downloader = YoutubeDL::new(&PathBuf::from("./"), vec![Arg::new_with_arg("-f", "bestaudio"), Arg::new("-g")], raw_url.as_str()).unwrap().download();
+        file_data.url = match downloader.result_type()
+        {
+            ResultType::SUCCESS => { Some(downloader.output().to_string()) },
+            _ => { eprintln!("{}", downloader.output()); return Err(FailReason::YoutubeDLFailed); }
+        };
+        Some(raw_url)
+    }
+    else
+    {
+        // The user passed their own stream - take that
+		let stream_index_opt = args.iter().position(|i| i.as_str() == "-stream" || i.as_str() == "-s");
+        if let Some(flag_index) = stream_index_opt
+        {
+            if let Some(requested_stream) = args.get(flag_index + 1)
+            {
+                file_data.url = Some(String::from(requested_stream));
+            }
+        }
+        if file_data.year == None
+        {
+			eprintln!("You must provide an audio/visual stream!");
+			std::process::exit(1);
+        }
+        None
     };
+
 
     //
     // Parse the cover, make sure the url is valid
@@ -113,12 +137,16 @@ fn parse_flags(file_data: &mut FileData) -> Result<(), FailReason>
     }
     if file_data.cover == None
     {
-        // Get the youtube thumbnail
-        let extraction_url = raw_url;
-        let dl_res = YoutubeDL::new(&PathBuf::from("./"), vec![Arg::new("--get-thumbnail")], extraction_url.as_str()).unwrap().download();
-        let mut cover_url = String::from(dl_res.output());
-        cover_url.pop();
-        file_data.cover = Some(cover_url);
+        if let Some(cover_ext_url) = cover_ext_url_opt
+        {
+            // Get the youtube thumbnail
+            let extraction_url = cover_ext_url;
+            let dl_res = YoutubeDL::new(&PathBuf::from("./"), vec![Arg::new("--get-thumbnail")], extraction_url.as_str()).unwrap().download();
+            let mut cover_url = String::from(dl_res.output());
+            cover_url.pop();
+            file_data.cover = Some(cover_url);
+            println!("Non-youtube audio stream provided: using youtube URL for cover image only");
+        }
     }
 
 
@@ -164,7 +192,7 @@ fn parse_flags(file_data: &mut FileData) -> Result<(), FailReason>
         if let Some(requested_filename) = args.get(flag_index + 1)
         {
             let formatted_filename = unallowed_chars.replace_all(requested_filename, "");
-            if requested_filename.as_str() != formatted_filename { println!("Invalid file name - using \"{}\"", formatted_filename); }
+            if requested_filename.as_str() != formatted_filename { println!("Invalid file name: using \"{}\"", formatted_filename); }
             file_data.file_name = Some(formatted_filename.to_string());
         }
     }
