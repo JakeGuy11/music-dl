@@ -57,8 +57,6 @@ fn main()
         Ok(_) => { println!("Downloading..."); },
     }
 
-    println!("cover url is {}", song.cover.as_ref().unwrap());
-
     // Generate the ffmpeg download command
     let command = generate_ffmpeg_flags(&song);
 
