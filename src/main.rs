@@ -82,6 +82,14 @@ fn parse_flags(file_data: &mut FileData) -> Result<(), FailReason>
     // First, get all the user's arguments as a vector
     let args: Vec<String> = std::env::args().skip(1).collect();
 
+    // Check if the user wants help
+    if args.iter().any(|i| i.as_str() == "-h" || i.as_str() == "-help" || i.as_str() == "--help") 
+    {
+        let help_msg = include_bytes!("help.txt");
+        print!("{}", String::from_utf8_lossy(help_msg));
+        std::process::exit(0);
+    }
+
     // Get the URL
     let raw_url = if let Some(given_url) = args.last() { String::from(given_url) } else { return Err(FailReason::NoURLProvided); };
     // Turn that raw url into the raw video url

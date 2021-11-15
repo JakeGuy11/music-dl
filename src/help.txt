@@ -1,0 +1,20 @@
+USAGE: mdl [FLAGS] URL
+
+For help:
+       mdl -h
+       mdl -help
+       mdl --help
+
+Recognized flags (all duplicate flags ignored):
+-t   -title                 Specify the title of the track. Program will prompt user if not included.
+-n   -filename              Specify the filename. Problematic characters will be excluded. Default is the title of the track.
+-c   -cover                 Specify the URL of the cover image to use. Default is the youtube thumbnail.
+-e   -extension             Specify the audio extension. Only MP3 is tested. Default is mp3.
+-p   -path                  Specify the path to save the audio. Subdirectories will not be created automatically. Default is `./`
+-a   -artist                Specify the artist name. Program will prompt user if not included.
+-b   -album                 Specify the album name. Default is the title of the track.
+-nb  -no-album              Exclude the album tag. All album flags will be ignored.
+-y   -year                  Specify the year of the track. Program will prompt user if not included.
+-ny  -no-year               Exclude the year tag. User will not be prompted for the year, all year flags will be ignored.
+-r   -track                 Specify the track number. Default is 1.
+-nt  -no-track              Exclude the track tag. All track flags will be ignored.
