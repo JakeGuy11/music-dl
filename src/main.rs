@@ -1,6 +1,7 @@
 extern crate ytd_rs;
 extern crate regex;
 use ytd_rs::{YoutubeDL, ResultType, Arg};
+use std::process::Command;
 use std::path::PathBuf;
 use std::io::Write;
 use regex::Regex;
@@ -53,15 +54,23 @@ fn main()
         Err(FailReason::NoURLProvided) => { eprintln!("You must provide a URL to download!"); std::process::exit(1); },
         Err(FailReason::StdInFailed) => { eprintln!("Failed to read console input!"); std::process::exit(1); },
         Err(FailReason::YoutubeDLFailed) => { eprintln!("Failed to run youtube-dl command!"); std::process::exit(1); },
-        Ok(_) => { println!("Downloading..."); }
+        Ok(_) => { println!("Downloading..."); },
     }
 
     println!("cover url is {}", song.cover.as_ref().unwrap());
 
     // Generate the ffmpeg download command
     let command = generate_ffmpeg_flags(&song);
-    println!("{}", command);
 
+    // Now we have the command - execute it and handle errors
+    let mut download_command = Command::new("sh");
+    download_command.arg("-c").arg(command.as_str());
+
+    match download_command.output()
+    {
+        Err(_) => { eprintln!("Failed to execute FFMPEG command!"); },
+        Ok(_) => {  }
+    }
 }
 
 
